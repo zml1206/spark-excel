@@ -2,11 +2,10 @@ package com.crealytics.spark.excel
 
 import java.io.BufferedOutputStream
 
-import com.crealytics.spark.excel.ExcelFileSaver.{DEFAULT_DATE_FORMAT, DEFAULT_SHEET_NAME, DEFAULT_TIMESTAMP_FORMAT}
 import com.norbitltd.spoiwo.model._
-import com.norbitltd.spoiwo.natures.xlsx.Model2XlsxConversions._
+import com.norbitltd.spoiwo.natures.streaming.xlsx.Model2XlsxConversions._
 import org.apache.hadoop.fs.{FSDataInputStream, FileSystem, Path}
-import org.apache.poi.ss.util.CellRangeAddress
+import org.apache.poi.xssf.streaming.SXSSFWorkbook
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.apache.spark.sql.{DataFrame, SaveMode}
 
@@ -27,7 +26,7 @@ class ExcelFileSaver(
   header: Boolean = true
 ) {
   def save(): Unit = {
-    def sheet(workbook: XSSFWorkbook) = {
+    def sheet(workbook: SXSSFWorkbook) = {
       val headerRow = if (header) Some(dataFrame.schema.fields.map(_.name).toSeq) else None
       val dataRows = dataFrame
         .toLocalIterator()
@@ -36,7 +35,7 @@ class ExcelFileSaver(
       dataLocator.toSheet(headerRow, dataRows, workbook)
     }
     val fileAlreadyExists = fs.exists(location)
-    def writeToWorkbook(workbook: XSSFWorkbook): Unit = {
+    def writeToWorkbook(workbook: SXSSFWorkbook): Unit = {
       Workbook(sheet(workbook)).writeToExisting(workbook)
       autoClose(new BufferedOutputStream(fs.create(location)))(workbook.write)
     }
@@ -45,13 +44,13 @@ class ExcelFileSaver(
         if (fileAlreadyExists) {
           fs.delete(location, true)
         }
-        writeToWorkbook(new XSSFWorkbook())
+        writeToWorkbook(new SXSSFWorkbook())
       case (true, SaveMode.ErrorIfExists) =>
         sys.error(s"path $location already exists.")
       case (true, SaveMode.Ignore) => ()
       case (true, SaveMode.Append) =>
         val inputStream: FSDataInputStream = fs.open(location)
-        val workbook = new XSSFWorkbook(inputStream)
+        val workbook = new SXSSFWorkbook(new XSSFWorkbook(inputStream))
         inputStream.close()
         writeToWorkbook(workbook)
     }

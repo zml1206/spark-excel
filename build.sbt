@@ -68,7 +68,16 @@ spAppendScalaVersion := true
 
 spIncludeMaven := true
 
-publishTo := sonatypePublishToBundle.value
+publishTo := {
+  val nexus = "http://nexus.k8s.uc.host.dxy/"
+  if (isSnapshot.value) {
+    Some("maven-snapshot" at nexus + "repository/maven-snapshots/")
+  } else {
+    Some("maven-releases" at nexus + "repository/maven-releases/")
+  }
+}
+
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 
 Global/useGpgPinentry := true
 
@@ -105,3 +114,4 @@ fork := true
 
 mimaPreviousArtifacts := Set("com.crealytics" %% "spark-excel" % "0.0.1")
 // ------------------------------------------------------------------------------------------------
+version := "0.13.5-SNAPSHOT"
